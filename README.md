@@ -8,6 +8,8 @@ nix shell nixpkgs#ostree
 mkdir myflatpakbuilddir
 cd myflatpakbuilddir
 
+ostree init --mode archive-z2 --repo=.
+
 mkdir -p myruntime
 mkdir -p mysdk
 
@@ -26,7 +28,9 @@ sdk=org.mydomain.BaseSdk/x86_64/x86_64/2023-04-08
 EOF
 
 mkdir -p myruntime/files
-mkdir -p mysdk/files
+mkdir -p myruntime/usr
+mkdir -p mysdk/files/x86_64-unknown-linux-gnu/
+mkdir -p mysdk/usr
 
 flatpak build-finish myruntime
 
