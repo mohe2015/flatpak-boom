@@ -1,5 +1,8 @@
 ```bash
 # https://wiki.archlinux.org/title/Flatpak#Creating_a_custom_base_runtime
+# man flatpak-manifest
+# https://github.com/flatpak/flatpak-builder/blob/main/data/flatpak-manifest.schema.json
+# "$schema": "https://raw.githubusercontent.com/flatpak/flatpak-builder/main/data/flatpak-manifest.schema.json"
 nix shell nixpkgs#ostree
 
 mkdir myflatpakbuilddir
@@ -22,10 +25,10 @@ runtime=org.mydomain.BasePlatform/x86_64/x86_64/2023-04-08
 sdk=org.mydomain.BaseSdk/x86_64/x86_64/2023-04-08
 EOF
 
-mkdir -p myruntime/usr
-mkdir -p mysdk/usr
+mkdir -p myruntime/files
+mkdir -p mysdk/files
 
-ostree init --mode archive-z2 --repo=.
+flatpak build-finish myruntime
 
 flatpak build-export . mysdk
 
