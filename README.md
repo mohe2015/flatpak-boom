@@ -108,6 +108,15 @@ flatpak build-export . /tmp/firefox
 
 flatpak install --or-update --user myos org.mydomain.Firefox
 flatpak run org.mydomain.Firefox
-flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh
+flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep --color font
+flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep -v /nix/store
+
+# maybe copy permissions of official flatpak
+# /app/lib/glibc-hwcaps/x86-64-v3/libpthread.so.0
+# /etc/ld-nix.so.preload
+# /run/current-system/sw/lib/locale/locale-archive
+#/etc/nsswitch.conf
+# /etc/resolv.conf
+# /run/dbus/system_bus_socket
 
 ```
