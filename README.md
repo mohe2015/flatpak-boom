@@ -84,13 +84,20 @@ flatpak run org.mydomain.Kate
 # firefox
 flatpak build-init /tmp/firefox org.mydomain.Firefox org.mydomain.BaseSdk/x86_64/master org.mydomain.BasePlatform/x86_64/master
 mkdir -p /tmp/firefox/files/bin
+mkdir -p /tmp/firefox/files/share
 cat > /tmp/firefox/files/bin/run.sh << EOF
 #!/app/nix/store/6c1pxa6x6mb6z0g6ga1n00mjv43x9mf9-bash-5.2-p15-x86_64-unknown-linux-musl/bin/bash
+set -ex
 echo "Hello world, from a sandbox"
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/nix /nix
+/app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/etc/localtime /etc/localtime
+/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /
+/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /etc
 /nix/store/dvnrfhs6sm1jhy2kmnrwxczgq6xchrk0-firefox-111.0.1/bin/firefox
 EOF
 chmod +x /tmp/firefox/files/bin/run.sh
+mkdir -p /tmp/firefox/files/etc/
+cp /etc/localtime /tmp/firefox/files/etc/localtime
 nix copy --to /tmp/firefox/files nixpkgs#firefox --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.bash --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.coreutils --no-check-sigs
@@ -100,6 +107,7 @@ flatpak build-export . /tmp/firefox
 
 
 flatpak install --or-update --user myos org.mydomain.Firefox
-flatpak run --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox run.sh
+flatpak run org.mydomain.Firefox
+flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh
 
 ```
