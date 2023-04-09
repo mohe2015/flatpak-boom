@@ -94,10 +94,12 @@ echo "Hello world, from a sandbox"
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/run/current-system /run/current-system
 /nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /
 /nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /run
+/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /etc
 /nix/store/dvnrfhs6sm1jhy2kmnrwxczgq6xchrk0-firefox-111.0.1/bin/firefox
 EOF
 chmod +x /tmp/firefox/files/bin/run.sh
 mkdir -p /tmp/firefox/files/etc/
+# TODO FIXME https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/fonts/fontconfig.nix we need to actually make this a nix build process
 cp -r /etc/fonts /tmp/firefox/files/etc/fonts
 cp /etc/localtime /tmp/firefox/files/etc/localtime
 mkdir -p /tmp/firefox/files/etc/ssl/certs/
@@ -131,9 +133,9 @@ org.mozilla.firefox permissions:
     [3] org.mozilla.firefox.*, org.mozilla.firefox_beta.*, org.mpris.MediaPlayer2.firefox.*
     [4] org.freedesktop.NetworkManager
 
-flatpak install --or-update --user myos org.mydomain.Firefox
 
 # dont have an existing firefox running otherwise it will just tell it to create a new window
+flatpak install --or-update --user myos org.mydomain.Firefox
 flatpak run org.mydomain.Firefox
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep --color font
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep -v /nix/store
