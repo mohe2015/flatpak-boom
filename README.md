@@ -5,7 +5,7 @@ nix shell nixpkgs#ostree
 mkdir myflatpakbuilddir
 cd myflatpakbuilddir
 
-ostree init --mode archive-z2 --repo=.
+ostree init --mode bare-user --repo=.
 
 mkdir -p myruntime
 mkdir -p mysdk
@@ -32,8 +32,6 @@ mkdir -p mysdk/usr
 flatpak build-export . mysdk
 
 flatpak build-export . myruntime
-
-flatpak build-update-repo .
 
 flatpak remote-add --user --no-gpg-verify myos file://$(pwd)
 
@@ -91,20 +89,33 @@ set -ex
 echo "Hello world, from a sandbox"
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/nix /nix
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/etc/localtime /etc/localtime
+/app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/run/current-system /run/current-system
 /nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /
-/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /etc
+/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /run
 /nix/store/dvnrfhs6sm1jhy2kmnrwxczgq6xchrk0-firefox-111.0.1/bin/firefox
 EOF
 chmod +x /tmp/firefox/files/bin/run.sh
 mkdir -p /tmp/firefox/files/etc/
 cp /etc/localtime /tmp/firefox/files/etc/localtime
+mkdir -p /tmp/firefox/files/run/current-system/sw/lib/locale/
+cp /run/current-system/sw/lib/locale/locale-archive /tmp/firefox/files/run/current-system/sw/lib/locale/locale-archive
 nix copy --to /tmp/firefox/files nixpkgs#firefox --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.bash --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.coreutils --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.strace --no-check-sigs
-flatpak build-finish --command=run.sh --socket=wayland /tmp/firefox
-flatpak build-export . /tmp/firefox
 
+rmdir /tmp/firefox/export/
+flatpak build-finish --command=run.sh --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --socket=x11 --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager /tmp/firefox
+flatpak build-export --ostree-verbose --disable-fsync . /tmp/firefox
+
+org.mozilla.firefox permissions:
+    ipc                     network                      cups       pcsc       pulseaudio       wayland       x11       devices       file access [1]      dbus access [2]
+    bus ownership [3]       system dbus access [4]
+
+    [1] xdg-download
+    [2] org.a11y.Bus, org.freedesktop.FileManager1, org.freedesktop.Notifications, org.freedesktop.ScreenSaver, org.gnome.SessionManager, org.gtk.vfs.*
+    [3] org.mozilla.firefox.*, org.mozilla.firefox_beta.*, org.mpris.MediaPlayer2.firefox.*
+    [4] org.freedesktop.NetworkManager
 
 flatpak install --or-update --user myos org.mydomain.Firefox
 flatpak run org.mydomain.Firefox
@@ -112,7 +123,6 @@ flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-st
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep -v /nix/store
 
 # maybe copy permissions of official flatpak
-# /app/lib/glibc-hwcaps/x86-64-v3/libpthread.so.0
 # /etc/ld-nix.so.preload
 # /run/current-system/sw/lib/locale/locale-archive
 #/etc/nsswitch.conf
