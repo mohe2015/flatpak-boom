@@ -5,6 +5,19 @@
 
   outputs = { self, nixpkgs }: {
 
+    packages.x86_64-linux.flatpak-runtime-empty = let
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in pkgs.runCommand "firefox" {} ''
+      mkdir -p $out
+      cat > $out/metadata << EOF
+      [Runtime]
+      name=org.mydomain.BasePlatform
+      runtime=org.mydomain.BasePlatform/x86_64/2023-04-08
+      sdk=org.mydomain.BaseSdk/x86_64/2023-04-08
+      EOF
+      # flatpak build-export . mysdk
+    '';
+
     packages.x86_64-linux.firefox-flatpak = let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       inner = pkgs.firefox;
@@ -38,13 +51,27 @@
       --ro-bind ${runtime} $FLATPAK_DIR/runtime \
       ${pkgs.flatpak}/bin/flatpak --user run ${name}
   '';
-    in pkgs.runCommand "firefox" {} ''
+    flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
+      ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=.
+      cat > $out/metadata << EOF
+      [Application]
+      name=org.mydomain.Firefox
+      runtime=org.mydomain.BasePlatform/x86_64/master
+      sdk=org.mydomain.BaseSdk/x86_64/master
+      command=internal-run.sh
+      EOF
       xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out
       mkdir -p $out/
       cp -r ${nixosCore.config.system.build.etc}/etc $out
       mkdir -p $out/bin
-      echo "${inner}/bin/firefox" >> $out/bin/firefox
-    '';
+      # TODO shebang
+      echo "${inner}/bin/firefox" > $out/bin/internal-run.sh
+       '';
+  in pkgs.runCommand "firefox" {} ''
+    mkdir -p $out/bin
+    echo "${script "org.mydomain.Firefox" flatpak-package self.packages.x86_64-linux.flatpak-runtime-empty}" >> $out/bin/firefox
+    chmod +x $out/bin/firefox
+  '';
   };
 }

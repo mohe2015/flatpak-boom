@@ -5,7 +5,7 @@ nix shell nixpkgs#ostree
 mkdir myflatpakbuilddir
 cd myflatpakbuilddir
 
-ostree init --mode bare-user --repo=.
+ostree init --mode bare-user-only --repo=.
 
 mkdir -p myruntime
 mkdir -p mysdk
