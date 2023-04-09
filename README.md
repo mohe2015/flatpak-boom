@@ -103,9 +103,18 @@ nix copy --to /tmp/firefox/files nixpkgs#firefox --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.bash --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.coreutils --no-check-sigs
 nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.strace --no-check-sigs
+nix copy --to /tmp/firefox/files nixpkgs#pkgsStatic.gdb --no-check-sigs
 
 rmdir /tmp/firefox/export/
+rm /tmp/firefox/metadata
+rm -R /tmp/firefox/var/
+mv /tmp/firefox/files /tmp/firefox/files_
+flatpak build-init /tmp/firefox org.mydomain.Firefox org.mydomain.BaseSdk/x86_64/master org.mydomain.BasePlatform/x86_64/master
+rmdir /tmp/firefox/files
+mv /tmp/firefox/files_ /tmp/firefox/files
 flatpak build-finish --command=run.sh --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --socket=x11 --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager /tmp/firefox
+cat /tmp/firefox/metadata
+
 flatpak build-export --ostree-verbose --disable-fsync . /tmp/firefox
 
 org.mozilla.firefox permissions:
@@ -118,6 +127,8 @@ org.mozilla.firefox permissions:
     [4] org.freedesktop.NetworkManager
 
 flatpak install --or-update --user myos org.mydomain.Firefox
+
+# dont have an existing firefox running otherwise it will just tell it to create a new window
 flatpak run org.mydomain.Firefox
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep --color font
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep -v /nix/store
