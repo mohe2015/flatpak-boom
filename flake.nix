@@ -55,8 +55,8 @@
       command=internal-run.sh
       EOF
       mkdir -p $out/files
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils ])} | tar -xC $out/files
-    
+      # TODO FIXME autodetect dependencies
+      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils nixosCore.config.system.build.etc ])} | tar -xC $out/files
       mkdir -p $out/
       cp -r ${nixosCore.config.system.build.etc}/etc $out/files
       mkdir -p $out/files/bin
@@ -76,7 +76,8 @@
       EOF
       ls -la $out/files/bin/
       chmod +x $out/files/bin/internal-run.sh
-      ${pkgs.flatpak}/bin/flatpak build-finish $out
+      # TODO FIXME wayland only doesn't work yet
+      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --socket=x11 --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/flatpak
