@@ -1,4 +1,6 @@
 {
+  # nix repl
+  # :lf .#
   description = "A very basic flake";
 
   outputs = { self, nixpkgs }: {
@@ -13,20 +15,25 @@
       };
       evalMinimalConfig = module: nixosLib.evalModules { modules = [ module ]; };
       nixosCore = evalMinimalConfig ({ config, ... }: {
-        system = "x86_64-linux";
+        #system = "x86_64-linux";
         imports = [
+          pkgs.pkgsModule
           (nixpkgs + "/nixos/modules/system/etc/etc.nix")
+          (nixpkgs + "/nixos/modules/misc/assertions.nix")
+          (nixpkgs + "/nixos/modules/config/system-path.nix")
+          (nixpkgs + "/nixos/modules/config/fonts/fonts.nix")
+          (nixpkgs + "/nixos/modules/config/fonts/fontconfig.nix")
           ({ ... }: {
-            system.stateVersion = "23.05";
+            fonts.fontconfig.ultimate.preset = false;
           })
         ];
       });
     in pkgs.runCommand "firefox" {} ''
-      set -x
-      echo ${pkgs.writeReferencesToFile inner}
-      mkdir -p /etc
-      ${nixosCore.config.system.build.etcActivationCommands}
-      mv /etc $out/etc
+      mkdir -p $out
+      xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out
+      mkdir -p $out/
+      cp -r ${nixosCore.config.system.build.etc}/etc $out
+      mkdir -p $out/bin
       echo "${inner}/bin/firefox" >> $out/bin/firefox
     '';
   };
