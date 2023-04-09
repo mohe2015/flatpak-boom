@@ -28,6 +28,16 @@
           })
         ];
       };
+      # https://github.com/yawnt/declarative-nix-flatpak/blob/a82b3b135f79b78c379c4f1b0c52957cd7ccf50c/flatpak.nix#L4-L12
+      script = name: app: runtime: pkgs.writeScriptBin "${name}" ''
+    FLATPAK_DIR=$HOME/.local/share/flatpak
+    ${pkgs.bubblewrap}/bin/bwrap \
+      --dev-bind / / \
+      --tmpfs $FLATPAK_DIR \
+      --ro-bind ${app} $FLATPAK_DIR/app \
+      --ro-bind ${runtime} $FLATPAK_DIR/runtime \
+      ${pkgs.flatpak}/bin/flatpak --user run ${name}
+  '';
     in pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out
