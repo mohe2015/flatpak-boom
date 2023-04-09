@@ -61,6 +61,7 @@
       mkdir -p $out/files/bin
       # TODO shebang
       echo "${inner}/bin/firefox" > $out/files/bin/internal-run.sh
+      chmod +x $out/files/bin/internal-run.sh
       ${pkgs.flatpak}/bin/flatpak build-finish $out
        '';
   in pkgs.runCommand "firefox" {} ''
@@ -72,4 +73,7 @@
     chmod +x $out/bin/firefox
   '';
   };
+  # flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
+  # flatpak remote-ls nix
+  # nix run .#packages.x86_64-linux.firefox-flatpak
 }
