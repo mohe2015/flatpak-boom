@@ -42,7 +42,7 @@
         ];
       };
       # https://github.com/yawnt/declarative-nix-flatpak/blob/a82b3b135f79b78c379c4f1b0c52957cd7ccf50c/flatpak.nix#L4-L12
-      script = name: app: runtime: pkgs.writeScriptBin "${name}" ''
+      script = name: app: runtime: ''
     FLATPAK_DIR=$HOME/.local/share/flatpak
     ${pkgs.bubblewrap}/bin/bwrap \
       --dev-bind / / \
@@ -70,7 +70,7 @@
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/bin
-    echo "${script "org.mydomain.Firefox" flatpak-package self.packages.x86_64-linux.flatpak-runtime-empty}" >> $out/bin/firefox
+    echo '${script "org.mydomain.Firefox" flatpak-package self.packages.x86_64-linux.flatpak-runtime-empty}' > $out/bin/firefox
     chmod +x $out/bin/firefox
   '';
   };
