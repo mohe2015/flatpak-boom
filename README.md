@@ -89,6 +89,8 @@ set -ex
 echo "Hello world, from a sandbox"
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/nix /nix
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/etc/localtime /etc/localtime
+/app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/etc/fonts /etc/fonts
+/app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/etc/ssl /etc/ssl
 /app/nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ln -s /app/run/current-system /run/current-system
 /nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /
 /nix/store/gkfxaxd7qhd55nc8lyxgr0834548fdbg-coreutils-static-x86_64-unknown-linux-musl-9.1/bin/ls -la /run
@@ -96,7 +98,10 @@ echo "Hello world, from a sandbox"
 EOF
 chmod +x /tmp/firefox/files/bin/run.sh
 mkdir -p /tmp/firefox/files/etc/
+cp -r /etc/fonts /tmp/firefox/files/etc/fonts
 cp /etc/localtime /tmp/firefox/files/etc/localtime
+mkdir -p /tmp/firefox/files/etc/ssl/certs/
+cp /etc/ssl/certs/ca-certificates.crt /tmp/firefox/files/etc/ssl/certs/ca-certificates.crt
 mkdir -p /tmp/firefox/files/run/current-system/sw/lib/locale/
 cp /run/current-system/sw/lib/locale/locale-archive /tmp/firefox/files/run/current-system/sw/lib/locale/locale-archive
 nix copy --to /tmp/firefox/files nixpkgs#firefox --no-check-sigs
@@ -132,6 +137,8 @@ flatpak install --or-update --user myos org.mydomain.Firefox
 flatpak run org.mydomain.Firefox
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep --color font
 flatpak run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f run.sh 2>&1 | grep -v /nix/store
+flatpak run --devel --command=/app/nix/store/fj45303ravmhqnj4f1jlsxan8rb03qv9-gdb-static-x86_64-unknown-linux-musl-13.1/bin/gdb org.mydomain.Firefox -f run.sh
+
 
 # maybe copy permissions of official flatpak
 # /etc/ld-nix.so.preload
