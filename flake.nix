@@ -48,10 +48,10 @@
     ${pkgs.bubblewrap}/bin/bwrap \
       --dev-bind / / \
       --tmpfs $FLATPAK_DIR \
-      --ro-bind ${app} $FLATPAK_DIR/app/${name}/current/active \
-      --ro-bind ${runtime} $FLATPAK_DIR/runtime/${runtime-name}/x86_64/stable/active \
-      ls -la $FLATPAK_DIR
-      #${pkgs.flatpak}/bin/flatpak --user run ${name}
+      --ro-bind ${app} $FLATPAK_DIR/app/${name}/current \
+      --ro-bind ${app} $FLATPAK_DIR/app/${name}/x86_64/master/active \
+      --ro-bind ${runtime} $FLATPAK_DIR/runtime/${runtime-name}/x86_64/master/active \
+      strace ${pkgs.flatpak}/bin/flatpak --user run ${name}
   '';
     flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
