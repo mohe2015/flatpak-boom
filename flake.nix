@@ -55,12 +55,26 @@
       command=internal-run.sh
       EOF
       mkdir -p $out/files
-      xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out/files
+      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils ])} | tar -xC $out/files
+    
       mkdir -p $out/
       cp -r ${nixosCore.config.system.build.etc}/etc $out/files
       mkdir -p $out/files/bin
-      # TODO shebang
-      echo "${inner}/bin/firefox" > $out/files/bin/internal-run.sh
+      cat > $out/files/bin/internal-run.sh << EOF
+      #!/app${pkgs.pkgsStatic.bash}/bin/bash
+      set -ex
+      echo "Hello world, from a sandbox"
+      /app${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix /nix
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/localtime /etc/localtime
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/fonts /etc/fonts
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/ssl /etc/ssl
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/current-system /run/current-system
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc
+      ${inner}/bin/firefox
+      EOF
+      ls -la $out/files/bin/
       chmod +x $out/files/bin/internal-run.sh
       ${pkgs.flatpak}/bin/flatpak build-finish $out
        '';
