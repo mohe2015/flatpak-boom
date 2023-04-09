@@ -15,7 +15,8 @@
       runtime=org.mydomain.BasePlatform/x86_64/2023-04-08
       sdk=org.mydomain.BaseSdk/x86_64/2023-04-08
       EOF
-      # flatpak build-export . mysdk
+      mkdir -p $out/files
+      ${pkgs.flatpak}/bin/flatpak build-finish $out
     '';
 
     packages.x86_64-linux.firefox-flatpak = let
@@ -61,12 +62,14 @@
       sdk=org.mydomain.BaseSdk/x86_64/master
       command=internal-run.sh
       EOF
-      xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out
+      mkdir -p $out/files
+      xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out/files
       mkdir -p $out/
-      cp -r ${nixosCore.config.system.build.etc}/etc $out
-      mkdir -p $out/bin
+      cp -r ${nixosCore.config.system.build.etc}/etc $out/files
+      mkdir -p $out/files/bin
       # TODO shebang
-      echo "${inner}/bin/firefox" > $out/bin/internal-run.sh
+      echo "${inner}/bin/firefox" > $out/files/bin/internal-run.sh
+      ${pkgs.flatpak}/bin/flatpak build-finish $out
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/bin
