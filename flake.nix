@@ -13,21 +13,21 @@
         # about it, so we enable the feature flag.
         featureFlags.minimalModules = {};
       };
-      evalMinimalConfig = module: nixosLib.evalModules { modules = [ module ]; };
-      nixosCore = evalMinimalConfig ({ config, ... }: {
-        #system = "x86_64-linux";
-        imports = [
-          pkgs.pkgsModule
-          (nixpkgs + "/nixos/modules/system/etc/etc.nix")
-          (nixpkgs + "/nixos/modules/misc/assertions.nix")
-          (nixpkgs + "/nixos/modules/config/system-path.nix")
-          (nixpkgs + "/nixos/modules/config/fonts/fonts.nix")
-          (nixpkgs + "/nixos/modules/config/fonts/fontconfig.nix")
+      # nixosLib.evalModules;
+      nixosCore = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          #pkgs.pkgsModule
+          #(nixpkgs + "/nixos/modules/system/etc/etc.nix")
+          #(nixpkgs + "/nixos/modules/misc/assertions.nix")
+          #(nixpkgs + "/nixos/modules/config/system-path.nix")
+          #(nixpkgs + "/nixos/modules/config/fonts/fonts.nix")
+          #(nixpkgs + "/nixos/modules/config/fonts/fontconfig.nix")
           ({ ... }: {
-            fonts.fontconfig.ultimate.preset = false;
+            system.stateVersion = "23.05";
           })
         ];
-      });
+      };
     in pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       xargs tar c < ${pkgs.writeReferencesToFile inner} | tar -xC $out
