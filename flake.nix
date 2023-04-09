@@ -44,7 +44,7 @@
         ];
       };
       # https://github.com/yawnt/declarative-nix-flatpak/blob/a82b3b135f79b78c379c4f1b0c52957cd7ccf50c/flatpak.nix#L4-L12
-      script = repo: name: app: runtime-name: runtime: "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind ${repo} \\$HOME/.local/share/flatpak -- ls -la \\$HOME/.local/share/flatpak";
+      script = repo: name: app: runtime-name: runtime: "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind ${repo} \\$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run ${name}";
     flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
@@ -66,18 +66,17 @@
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/flatpak
+    export TMP_REPO=$(mktemp -d)
     export XDG_DATA_HOME=$out
-    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out/flatpak
-    ls -la $out/flatpak
-    ${pkgs.flatpak}/bin/flatpak repair --user
-    ${pkgs.flatpak}/bin/flatpak build-export $out/flatpak ${flatpak-package}
-    ${pkgs.flatpak}/bin/flatpak build-export $out/flatpak ${self.packages.x86_64-linux.flatpak-runtime-empty}
+    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$TMP_REPO
+    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${flatpak-package}
+    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${self.packages.x86_64-linux.flatpak-runtime-empty}
+    ${pkgs.flatpak}/bin/flatpak --no-gpg-verify --user remote-add nix file://$TMP_REPO
+    ${pkgs.flatpak}/bin/flatpak install --assumeyes --user nix org.mydomain.Firefox
     mkdir -p $out/bin
     echo "${script "$out/flatpak" "org.mydomain.Firefox" flatpak-package "org.mydomain.BasePlatform" self.packages.x86_64-linux.flatpak-runtime-empty}" > $out/bin/firefox
     chmod +x $out/bin/firefox
   '';
   };
-  # flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
-  # flatpak remote-ls nix
   # nix run .#packages.x86_64-linux.firefox-flatpak
 }
