@@ -44,7 +44,7 @@
         ];
       };
       # https://github.com/yawnt/declarative-nix-flatpak/blob/a82b3b135f79b78c379c4f1b0c52957cd7ccf50c/flatpak.nix#L4-L12
-      script = repo: name: app: runtime-name: runtime: "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind ${repo} \\$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run ${name}";
+      script = repo: name: app: runtime-name: runtime: "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind ${repo} \\$HOME/.local/share/flatpak -- ls -la \\$HOME/.local/share/flatpak";
     flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
@@ -65,11 +65,15 @@
       ${pkgs.flatpak}/bin/flatpak build-finish $out
        '';
   in pkgs.runCommand "firefox" {} ''
-    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
-    ${pkgs.flatpak}/bin/flatpak build-export $out ${flatpak-package}
-    ${pkgs.flatpak}/bin/flatpak build-export $out ${self.packages.x86_64-linux.flatpak-runtime-empty}
+    mkdir -p $out/flatpak
+    export XDG_DATA_HOME=$out
+    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out/flatpak
+    ls -la $out/flatpak
+    ${pkgs.flatpak}/bin/flatpak repair --user
+    ${pkgs.flatpak}/bin/flatpak build-export $out/flatpak ${flatpak-package}
+    ${pkgs.flatpak}/bin/flatpak build-export $out/flatpak ${self.packages.x86_64-linux.flatpak-runtime-empty}
     mkdir -p $out/bin
-    echo "${script "$out" "org.mydomain.Firefox" flatpak-package "org.mydomain.BasePlatform" self.packages.x86_64-linux.flatpak-runtime-empty}" > $out/bin/firefox
+    echo "${script "$out/flatpak" "org.mydomain.Firefox" flatpak-package "org.mydomain.BasePlatform" self.packages.x86_64-linux.flatpak-runtime-empty}" > $out/bin/firefox
     chmod +x $out/bin/firefox
   '';
   };
