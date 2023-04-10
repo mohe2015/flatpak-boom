@@ -120,17 +120,19 @@
     mkdir -p $out/flatpak
     export TMP_REPO=$(mktemp -d)
     export XDG_DATA_HOME=$out
-    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$TMP_REPO
-    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${flatpak-package}
-    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${self.packages.x86_64-linux.flatpak-runtime-base}
-    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${self.packages.x86_64-linux.flatpak-sdk-base}
-    ${pkgs.flatpak}/bin/flatpak --no-gpg-verify --user remote-add nix file://$TMP_REPO
-    ${pkgs.flatpak}/bin/flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
-    mkdir -p $out/bin
-    echo "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind $out/flatpak \$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run org.mydomain.Firefox" > $out/bin/firefox
-    chmod +x $out/bin/firefox
+    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
+    # maybe simply create one repo and one output per package?
+    ${pkgs.flatpak}/bin/flatpak build-export $out ${flatpak-package}
+    ${pkgs.flatpak}/bin/flatpak build-export $out ${self.packages.x86_64-linux.flatpak-runtime-base}
+    ${pkgs.flatpak}/bin/flatpak build-export $out ${self.packages.x86_64-linux.flatpak-sdk-base}
   '';
   };
+/*
+flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
+flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
+flatpak run org.mydomain.Firefox
+*/
+
   # https://github.com/search?q=repo%3Aflatpak%2Fflatpak+.ref&type=code
   # nix run .#packages.x86_64-linux.firefox-flatpak
   # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f internal-run.sh
@@ -145,6 +147,21 @@ flatpak build-init --type=runtime test a.b.c org.freedesktop.Sdk org.freedesktop
 1.     org.mydomain.BasePlatform   master   i    nix     < 3.2?GB
 firefox>  2.     org.mydomain.BaseSdk        master   i    nix     < 123 bytes
 firefox>  3.     org.mydomain.Firefox        master   i    nix     < 1.3?GB
+  */
+
+  /*
+what is really needed
+~/.local/share/flatpak/app
+
+
+
+~/.local/share/flatpak/runtime
+
+error: Error opening file /home/moritz/.local/share/flatpak/app/org.mydomain.Firefox/x86_64/master/90c8457a04260968f1d439ba41cedfa71f3cb4ef9e0427df550a596db8234299/deploy: No such file or directory
+
+cat /home/moritz/.local/share/flatpak/app/org.mydomain.Firefox/x86_64/master/90c8457a04260968f1d439ba41cedfa71f3cb4ef9e0427df550a596db8234299/deploy
+file can also not simply be empty. 
+
   */
 }
 
