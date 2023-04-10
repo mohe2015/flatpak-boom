@@ -12,10 +12,25 @@
       cat > $out/metadata << EOF
       [Runtime]
       name=org.mydomain.BasePlatform
-      runtime=org.mydomain.BasePlatform/x86_64/2023-04-08
-      sdk=org.mydomain.BaseSdk/x86_64/2023-04-08
+      runtime=org.mydomain.BasePlatform/x86_64/master
+      sdk=org.mydomain.BaseSdk/x86_64/master
       EOF
       mkdir -p $out/files
+      mkdir -p $out/usr
+      ${pkgs.flatpak}/bin/flatpak build-finish $out
+    '';
+
+    packages.x86_64-linux.flatpak-sdk-empty = let
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in pkgs.runCommand "firefox" {} ''
+      mkdir -p $out
+      cat > $out/metadata << EOF
+      [Runtime]
+      name=org.mydomain.BaseSdk
+      runtime=org.mydomain.BasePlatform/x86_64/master
+      sdk=org.mydomain.BaseSdk/x86_64/master
+      EOF
+      mkdir -p $out/files/x86_64-unknown-linux-gnu/
       mkdir -p $out/usr
       ${pkgs.flatpak}/bin/flatpak build-finish $out
     '';
@@ -43,8 +58,6 @@
           })
         ];
       };
-      # https://github.com/yawnt/declarative-nix-flatpak/blob/a82b3b135f79b78c379c4f1b0c52957cd7ccf50c/flatpak.nix#L4-L12
-      script = repo: name: app: runtime-name: runtime: "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind ${repo} \\$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run ${name}";
     flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
@@ -56,7 +69,7 @@
       EOF
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils nixosCore.config.system.build.etc ])} | tar -xC $out/files
+      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb  nixosCore.config.system.build.etc ])} | tar -xC $out/files
       mkdir -p $out/
       cp -r ${nixosCore.config.system.build.etc}/etc $out/files
       mkdir -p $out/files/bin
@@ -82,12 +95,14 @@
     ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$TMP_REPO
     ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${flatpak-package}
     ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${self.packages.x86_64-linux.flatpak-runtime-empty}
+    ${pkgs.flatpak}/bin/flatpak build-export $TMP_REPO ${self.packages.x86_64-linux.flatpak-sdk-empty}
     ${pkgs.flatpak}/bin/flatpak --no-gpg-verify --user remote-add nix file://$TMP_REPO
-    ${pkgs.flatpak}/bin/flatpak install --assumeyes --user nix org.mydomain.Firefox
+    ${pkgs.flatpak}/bin/flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
     mkdir -p $out/bin
-    echo "${script "$out/flatpak" "org.mydomain.Firefox" flatpak-package "org.mydomain.BasePlatform" self.packages.x86_64-linux.flatpak-runtime-empty}" > $out/bin/firefox
+    echo "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind $out/flatpak \\$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run org.mydomain.Firefox" > $out/bin/firefox
     chmod +x $out/bin/firefox
   '';
   };
   # nix run .#packages.x86_64-linux.firefox-flatpak
+  # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f internal-run.sh
 }
