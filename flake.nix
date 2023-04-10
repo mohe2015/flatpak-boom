@@ -50,7 +50,8 @@
       EOF
       mkdir -p $out/usr
       mkdir -p $out/files
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} | tar -xC $out/usr
+      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} $out/references
+      xargs tar c < $out/references | tar -xC $out/usr
       ls -la $out/usr
       ${pkgs.flatpak}/bin/flatpak build-finish $out
     '';
@@ -82,7 +83,9 @@
       EOF
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner ])} | tar -xC $out/files # TODO FIXME filter out dependencies already contained in base
+      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner ])} references
+      grep -v -x -F -f ${self.packages.x86_64-linux.flatpak-runtime-base}/references references > $out/references
+      xargs tar c < $out/references | tar -xC $out/files # TODO FIXME filter out dependencies already contained in base
       mkdir -p $out/
       mkdir -p $out/files/etc/firefox
       cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
@@ -113,7 +116,7 @@
       # TODO FIXME wayland only doesn't work yet
       ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=x11 --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
        '';
-  in pkgs.runCommand "firefox" {} ''
+  in pkgs.runCommand "create-repo" {} ''
     mkdir -p $out/flatpak
     export TMP_REPO=$(mktemp -d)
     export XDG_DATA_HOME=$out
@@ -138,6 +141,10 @@ flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/fl
 flatpak install org.freedesktop.Platform
 flatpak install org.freedesktop.Sdk
 flatpak build-init --type=runtime test a.b.c org.freedesktop.Sdk org.freedesktop.Platform
+
+1.     org.mydomain.BasePlatform   master   i    nix     < 3.2?GB
+firefox>  2.     org.mydomain.BaseSdk        master   i    nix     < 123 bytes
+firefox>  3.     org.mydomain.Firefox        master   i    nix     < 1.3?GB
   */
 }
 
