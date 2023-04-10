@@ -80,7 +80,7 @@
       EOF
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb  nixosCore.config.system.build.etc ])} | tar -xC $out/files
+      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} | tar -xC $out/files
       mkdir -p $out/
       mkdir -p $out/files/etc/firefox
       cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
@@ -103,13 +103,13 @@
       ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
-      ${inner}/bin/firefox
+      ${pkgs.pkgsStatic.gdb}/bin/gdb ${inner}/bin/firefox
       EOF
 
       ls -la $out/files/bin/
       chmod +x $out/files/bin/internal-run.sh
       # TODO FIXME wayland only doesn't work yet
-      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --socket=x11 --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
+      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/flatpak
@@ -126,17 +126,9 @@
     chmod +x $out/bin/firefox
   '';
   };
-  # /etc/zoneinfo
-  # https://github.com/NixOS/nixpkgs/blob/a6c2a73e14546acabab93605bbbccaaacf2523a3/pkgs/applications/networking/browsers/firefox/wrapper.nix
-  # Link the runtime. The executable itself has to be copied,
-  # because it will resolve paths relative to its true location.
-  # /etc/firefox/mozilla.cfg
-  # maybe from we can also get the current system things etc
-  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/system/activation/top-level.nix
-  # /run/current-system/sw/lib/locale/locale-archive
-  # ${glibcLocales}/lib/locale/locale-archive
   # nix run .#packages.x86_64-linux.firefox-flatpak
   # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f internal-run.sh
   # clear && /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -e 'trace=!futex,sched_yield,close,poll,munmap,gettid,mmap,fcntl,ftruncate,write,read,sendmsg,recvmsg,getrandom,sched_getaffinity,epoll_wait,mprotect,prctl,getpriority,sigaltstack,pread64,pwrite64,rt_sigaction,fallocate,getpid,madvise,rt_sigprocmask,set_robust_list,rseq,clone3,seccomp,dup,fsync,pipe2,eventfd2,getcwd,prlimit64,getuid,geteuid,getgid,getegid,epoll_ctl,setpriority,clone,exit,set_tid_address,brk,getppid,arch_prctl,writev,readv,lseek,socketpair,dup2,fstat,wait4,ioctl,getdents64,exit_group,socket,copy_file_range' -f internal-run.sh 2>&1 | grep -v /nix/store
+  # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/fj45303ravmhqnj4f1jlsxan8rb03qv9-gdb-static-x86_64-unknown-linux-musl-13.1/bin/gdb org.mydomain.Firefox /app/nix/store/6c1pxa6x6mb6z0g6ga1n00mjv43x9mf9-bash-5.2-p15-x86_64-unknown-linux-musl/bin/bash --args internal-run.sh
 }
 
