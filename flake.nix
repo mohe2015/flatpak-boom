@@ -72,6 +72,8 @@
       # TODO FIXME autodetect dependencies
       xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb  nixosCore.config.system.build.etc ])} | tar -xC $out/files
       mkdir -p $out/
+      mkdir -p $out/files/etc/firefox
+      cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
       cp -r ${nixosCore.config.system.build.etc}/etc $out/files
       mkdir -p $out/files/run/current-system/sw/lib/locale/
       cp ${pkgs.glibcLocales}/lib/locale/locale-archive $out/files/run/current-system/sw/lib/locale/locale-archive
@@ -102,10 +104,14 @@
     ${pkgs.flatpak}/bin/flatpak --no-gpg-verify --user remote-add nix file://$TMP_REPO
     ${pkgs.flatpak}/bin/flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
     mkdir -p $out/bin
-    echo "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind $out/flatpak \\$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run org.mydomain.Firefox" > $out/bin/firefox
+    echo "${pkgs.bubblewrap}/bin/bwrap --dev-bind / / --ro-bind $out/flatpak \$HOME/.local/share/flatpak -- ${pkgs.flatpak}/bin/flatpak --user run org.mydomain.Firefox" > $out/bin/firefox
     chmod +x $out/bin/firefox
   '';
   };
+  # https://github.com/NixOS/nixpkgs/blob/a6c2a73e14546acabab93605bbbccaaacf2523a3/pkgs/applications/networking/browsers/firefox/wrapper.nix
+  # Link the runtime. The executable itself has to be copied,
+  # because it will resolve paths relative to its true location.
+  # /etc/firefox/mozilla.cfg
   # maybe from we can also get the current system things etc
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/system/activation/top-level.nix
   # /run/current-system/sw/lib/locale/locale-archive
