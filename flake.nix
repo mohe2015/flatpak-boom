@@ -65,13 +65,9 @@
       set -ex
       echo "Hello world, from a sandbox"
       /app${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix /nix
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/localtime /etc/localtime
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/fonts /etc/fonts
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/etc/ssl /etc/ssl
       ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/current-system /run/current-system
-      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /
-      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run
-      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc
+      ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber ${nixosCore.config.system.build.etc}/etc/* /etc/
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
       ${inner}/bin/firefox
       EOF
       ls -la $out/files/bin/
