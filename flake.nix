@@ -59,6 +59,16 @@
           })
         ];
       };
+    # copied from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/opengl.nix
+    cfg = nixosCore.config.hardware.opengl;
+    package = pkgs.buildEnv {
+      name = "opengl-drivers";
+      paths = [ cfg.package ] ++ cfg.extraPackages;
+    };
+    package32 = pkgs.buildEnv {
+      name = "opengl-drivers-32bit";
+      paths = [ cfg.package32 ] ++ cfg.extraPackages32;
+    };
     flatpak-package = pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
@@ -70,28 +80,36 @@
       EOF
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
-      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb  nixosCore.config.system.build.etc ])} | tar -xC $out/files
+      xargs tar c < ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb  nixosCore.config.system.build.etc ])} | tar -xC $out/files
       mkdir -p $out/
       mkdir -p $out/files/etc/firefox
       cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
       cp -r ${nixosCore.config.system.build.etc}/etc $out/files
       mkdir -p $out/files/run/current-system/sw/lib/locale/
       cp ${pkgs.glibcLocales}/lib/locale/locale-archive $out/files/run/current-system/sw/lib/locale/locale-archive
+      ln -s ${package} $out/files/run/opengl-driver
+      ln -s ${package32} $out/files/run/opengl-driver-32
       mkdir -p $out/files/bin
+
       cat > $out/files/bin/internal-run.sh << EOF
       #!/app${pkgs.pkgsStatic.bash}/bin/bash
       set -ex
       echo "Hello world, from a sandbox"
       /app${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix /nix
       ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/current-system /run/current-system
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/opengl-driver /run/opengl-driver
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/opengl-driver-32 /run/opengl-driver-32
       ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber ${nixosCore.config.system.build.etc}/etc/* /etc/
+      ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
       ${inner}/bin/firefox
       EOF
+
       ls -la $out/files/bin/
       chmod +x $out/files/bin/internal-run.sh
       # TODO FIXME wayland only doesn't work yet
-      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
+      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --socket=x11 --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
        '';
   in pkgs.runCommand "firefox" {} ''
     mkdir -p $out/flatpak
@@ -108,6 +126,7 @@
     chmod +x $out/bin/firefox
   '';
   };
+  # /etc/zoneinfo
   # https://github.com/NixOS/nixpkgs/blob/a6c2a73e14546acabab93605bbbccaaacf2523a3/pkgs/applications/networking/browsers/firefox/wrapper.nix
   # Link the runtime. The executable itself has to be copied,
   # because it will resolve paths relative to its true location.
