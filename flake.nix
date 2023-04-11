@@ -36,11 +36,18 @@
     package32 = pkgs.buildEnv {
       name = "opengl-drivers-32bit";
       paths = [ cfg.package32 ] ++ cfg.extraPackages32;
-    }; in {
+    };
+    drv2flatpak = drv: pkgs.runCommand "create-repo" {} ''
+      mkdir -p $out
+      ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
+      ${pkgs.flatpak}/bin/flatpak build-export $out ${drv}
+    '';
+   
+     in {
 
-    packages.x86_64-linux.flatpak-runtime-base = let
+    packages.x86_64-linux.runtime-base = let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
-    in pkgs.runCommand "flatpak-runtime-base" {} ''
+    in (pkgs.runCommand "flatpak-runtime-base" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
       [Runtime]
@@ -50,15 +57,17 @@
       EOF
       mkdir -p $out/usr
       mkdir -p $out/files
-      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} $out/references
-      xargs tar c < $out/references | tar -xC $out/usr
+      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} $out/files/references
+      xargs tar c < $out/files/references | tar -xC $out/usr
       ls -la $out/usr
       ${pkgs.flatpak}/bin/flatpak build-finish $out
-    '';
+    '');
 
-    packages.x86_64-linux.flatpak-sdk-base = let
+    packages.x86_64-linux.flatpak-runtime-base = drv2flatpak self.packages.x86_64-linux.runtime-base;
+
+    packages.x86_64-linux.sdk-base = let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
-    in pkgs.runCommand "flatpak-sdk-base" {} ''
+    in (pkgs.runCommand "flatpak-sdk-base" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
       [Runtime]
@@ -69,10 +78,11 @@
       mkdir -p $out/usr
       mkdir -p $out/files/x86_64-unknown-linux-gnu/
       ${pkgs.flatpak}/bin/flatpak build-finish $out
-    '';
+    '');
 
-    packages.x86_64-linux.firefox-flatpak = let
-    flatpak-package = pkgs.runCommand "firefox" {} ''
+    packages.x86_64-linux.flatpak-sdk-base = drv2flatpak self.packages.x86_64-linux.sdk-base;
+
+    packages.x86_64-linux.firefox = (pkgs.runCommand "firefox" {} ''
       mkdir -p $out
       cat > $out/metadata << EOF
       [Application]
@@ -84,8 +94,8 @@
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
       cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner ])} references
-      grep -v -x -F -f ${self.packages.x86_64-linux.flatpak-runtime-base}/references references > $out/references
-      xargs tar c < $out/references | tar -xC $out/files # TODO FIXME filter out dependencies already contained in base
+      grep -v -x -F -f ${self.packages.x86_64-linux.runtime-base}/files/references references > $out/files/references
+      xargs tar c < $out/files/references | tar -xC $out/files # TODO FIXME filter out dependencies already contained in base
       mkdir -p $out/
       mkdir -p $out/files/etc/firefox
       cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
@@ -97,13 +107,14 @@
       mkdir -p $out/files/bin
 
       cat > $out/files/bin/internal-run.sh << EOF
-      #!/app${pkgs.pkgsStatic.bash}/bin/bash
+      #!/usr/${pkgs.pkgsStatic.bash}/bin/bash
       set -ex
       echo "Hello world, from a sandbox"
-      /app${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix /nix
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/current-system /run/current-system
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/opengl-driver /run/opengl-driver
-      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/opengl-driver-32 /run/opengl-driver-32
+      /usr${pkgs.pkgsStatic.coreutils}/bin/mkdir -p /nix/store
+      /usr${pkgs.pkgsStatic.coreutils}/bin/ln -s /usr/nix/store/* /nix/store/
+      /usr${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix/store/* /nix/store/
+      ${pkgs.pkgsStatic.coreutils}/bin/ls -la /app/run/
+      ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/* /run/
       ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber ${nixosCore.config.system.build.etc}/etc/* /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
@@ -115,20 +126,19 @@
       chmod +x $out/files/bin/internal-run.sh
       # TODO FIXME wayland only doesn't work yet
       ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=x11 --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
-       '';
-  in pkgs.runCommand "create-repo" {} ''
-    mkdir -p $out/flatpak
-    export TMP_REPO=$(mktemp -d)
-    export XDG_DATA_HOME=$out
-    ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
-    # maybe simply create one repo and one output per package?
-    ${pkgs.flatpak}/bin/flatpak build-export $out ${flatpak-package}
-    ${pkgs.flatpak}/bin/flatpak build-export $out ${self.packages.x86_64-linux.flatpak-runtime-base}
-    ${pkgs.flatpak}/bin/flatpak build-export $out ${self.packages.x86_64-linux.flatpak-sdk-base}
-  '';
+       '');
+
+      packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
   };
 /*
+ix build -L .#flatpak-firefox && flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run org.mydomain.Firefox
+
 flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
+nix build .#flatpak-runtime-base
+flatpak install --assumeyes --user org.mydomain.BasePlatform
+nix build .#flatpak-sdk-base
+flatpak install --assumeyes --user org.mydomain.BaseSdk
+nix build .#flatpak-firefox
 flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
 flatpak run org.mydomain.Firefox
 */
