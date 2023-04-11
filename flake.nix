@@ -13,7 +13,7 @@
         system = "x86_64-linux";
         modules = [
           ({ ... }: {
-            environment.systemPackages = inner;
+            environment.systemPackages = [ inner ];
             environment.enableDebugInfo = true;
             time.timeZone = "Europe/Berlin";
             # TODO FIXME more from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/i18n.nix
