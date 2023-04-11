@@ -125,7 +125,7 @@
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
         # ${pkgs.pkgsStatic.strace}/bin/strace -f 
-        ${pkgs.pkgsStatic.gdb}/bin/gdb run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox
+        ${pkgs.pkgsStatic.gdb}/bin/gdb --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
         EOF
 
         ls -la $out/files/bin/
@@ -137,6 +137,9 @@
       packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
     };
   /*
+warning: Unable to find libthread_db matching inferior's thread library, thread debugging will not be available.
+
+
   lib/glibc-hwcaps/x86-64-v2/libpthread.so.0
 
 /nix/store/5fk74drrnrhgmcwxvsnmv2lx1srgdfkp-glib-2.74.5/lib/charset.alias
