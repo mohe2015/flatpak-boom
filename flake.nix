@@ -25,6 +25,7 @@
           ({ ... }: {
             time.timeZone = "Europe/Berlin";
             # TODO FIXME more from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/i18n.nix
+            # honor systemd.globalEnvironment and environment.sessionVariables?
             system.stateVersion = "23.05";
           })
         ];
@@ -108,7 +109,7 @@
         mkdir -p $out/files/bin
 
         cat > $out/files/bin/internal-run.sh << EOF
-        #!/usr/${pkgs.pkgsStatic.bash}/bin/bash
+        #!/usr${pkgs.pkgsStatic.bash}/bin/bash
         set -ex
         echo "Hello world, from a sandbox"
         /usr${pkgs.pkgsStatic.coreutils}/bin/mkdir -p /nix/store
@@ -121,7 +122,8 @@
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
-        ${pkgs.pkgsStatic.strace}/bin/strace -f ${inner}/bin/firefox
+        # ${pkgs.pkgsStatic.strace}/bin/strace -f 
+        ${inner}/bin/firefox
         EOF
 
         ls -la $out/files/bin/
@@ -133,6 +135,10 @@
       packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
     };
   /*
+  lib/glibc-hwcaps/x86-64-v2/libpthread.so.0
+
+/nix/store/5fk74drrnrhgmcwxvsnmv2lx1srgdfkp-glib-2.74.5/lib/charset.alias
+
     nix build -L .#flatpak-firefox && flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run --devel org.mydomain.Firefox
 
     flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
@@ -143,7 +149,7 @@
     nix build -L .#flatpak-firefox
     flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox
     flatpak run org.mydomain.Firefox
-  */
+c  */
 
   # https://github.com/search?q=repo%3Aflatpak%2Fflatpak+.ref&type=code
   # nix run .#packages.x86_64-linux.firefox-flatpak
