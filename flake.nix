@@ -107,23 +107,25 @@
         ln -s ${package} $out/files/run/opengl-driver
         ln -s ${package32} $out/files/run/opengl-driver-32
         mkdir -p $out/files/bin
-
+        ln -s ${pkgs.pkgsStatic.bash}/bin/sh $out/files/bin/sh
         cat > $out/files/bin/internal-run.sh << EOF
         #!/usr${pkgs.pkgsStatic.bash}/bin/bash
         set -ex
         echo "Hello world, from a sandbox"
         /usr${pkgs.pkgsStatic.coreutils}/bin/mkdir -p /nix/store
+        /usr${pkgs.pkgsStatic.coreutils}/bin/mkdir -p /bin
         /usr${pkgs.pkgsStatic.coreutils}/bin/ln -s /usr/nix/store/* /nix/store/
         /usr${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/nix/store/* /nix/store/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /app/run/
         ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/run/* /run/
+        ${pkgs.pkgsStatic.coreutils}/bin/ln -s /app/bin/* /bin/
         ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber ${nixosCore.config.system.build.etc}/etc/* /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
         # ${pkgs.pkgsStatic.strace}/bin/strace -f 
-        ${inner}/bin/firefox
+        ${pkgs.pkgsStatic.gdb}/bin/gdb run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox
         EOF
 
         ls -la $out/files/bin/
