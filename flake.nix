@@ -43,19 +43,11 @@
         ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
         ${pkgs.flatpak}/bin/flatpak build-export $out ${drv}
       '';
-
-    in
-    {
-
-      packages.x86_64-linux.runtime-base =
-        let
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        in
-        (pkgs.runCommand "flatpak-runtime-base" { } ''
+      buildRuntimeOrSdk = name: (pkgs.runCommand "flatpak-${name}-base" { } ''
           mkdir -p $out
           cat > $out/metadata << EOF
           [Runtime]
-          name=org.mydomain.BasePlatform
+          name=org.mydomain.${name}
           runtime=org.mydomain.BasePlatform/x86_64/master
           sdk=org.mydomain.BaseSdk/x86_64/master
           EOF
@@ -66,13 +58,15 @@
           ls -la $out/usr
           ${pkgs.flatpak}/bin/flatpak build-finish $out
         '');
+    in
+    {
+
+      packages.x86_64-linux.runtime-base = buildRuntimeOrSdk "BasePlatform";
 
       packages.x86_64-linux.flatpak-runtime-base = drv2flatpak self.packages.x86_64-linux.runtime-base;
 
-      packages.x86_64-linux.sdk-base =
-        let
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        in
+      packages.x86_64-linux.sdk-base = buildRuntimeOrSdk "BaseSdk";
+/*
         (pkgs.runCommand "flatpak-sdk-base" { } ''
           mkdir -p $out
           cat > $out/metadata << EOF
@@ -85,7 +79,7 @@
           mkdir -p $out/files/x86_64-unknown-linux-gnu/
           ${pkgs.flatpak}/bin/flatpak build-finish $out
         '');
-
+*/
       packages.x86_64-linux.flatpak-sdk-base = drv2flatpak self.packages.x86_64-linux.sdk-base;
 
       packages.x86_64-linux.firefox = (pkgs.runCommand "firefox" { } ''
@@ -138,15 +132,15 @@
       packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
     };
   /*
-    ix build -L .#flatpak-firefox && flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run --devel org.mydomain.Firefox
+    nix build -L .#flatpak-firefox && flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run --devel org.mydomain.Firefox
 
     flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
-    nix build .#flatpak-runtime-base
-    flatpak install --assumeyes --user org.mydomain.BasePlatform
-    nix build .#flatpak-sdk-base
-    flatpak install --assumeyes --user org.mydomain.BaseSdk
-    nix build .#flatpak-firefox
-    flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox
+    nix build -L .#flatpak-runtime-base
+    flatpak install --or-update --assumeyes --user org.mydomain.BasePlatform
+    nix build -L .#flatpak-sdk-base
+    flatpak install --or-update --assumeyes --user org.mydomain.BaseSdk
+    nix build -L .#flatpak-firefox
+    flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox
     flatpak run org.mydomain.Firefox
   */
 
