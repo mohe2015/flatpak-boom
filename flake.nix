@@ -3,11 +3,7 @@
   # :lf .#
   description = "A very basic flake";
 
-  inputs = {
-    nixseparatedebuginfod.url = "github:symphorien/nixseparatedebuginfod";
-  };
-
-  outputs = { self, nixpkgs, nixseparatedebuginfod }:
+  outputs = { self, nixpkgs }:
     let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       inner = pkgs.firefox;
@@ -16,8 +12,8 @@
       nixosCore = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          nixseparatedebuginfod.nixosModules.default
           ({ ... }: {
+            environment.enableDebugInfo = true;
             time.timeZone = "Europe/Berlin";
             # TODO FIXME more from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/i18n.nix
             # honor systemd.globalEnvironment and environment.sessionVariables?
@@ -40,7 +36,6 @@
         ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
         ${pkgs.flatpak}/bin/flatpak build-export $out ${drv}
       '';
-      gdb = (pkgs.gdb.override { enableDebuginfod = true; });
       buildRuntimeOrSdk = name: (pkgs.runCommand "flatpak-${name}-base" { } ''
           mkdir -p $out
           cat > $out/metadata << EOF
@@ -51,7 +46,7 @@
           EOF
           mkdir -p $out/usr
           mkdir -p $out/files
-          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" ([ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.strace gdb nixosCore.config.system.build.etc ] ++ nixosCore.config.environment.systemPackages) )} $out/files/references
+          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" ([ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.strace pkgs.gdb nixosCore.config.system.build.etc ] ++ nixosCore.config.environment.systemPackages) )} $out/files/references
           xargs tar c < $out/files/references | tar -xC $out/usr
           ls -la $out/usr
           ${pkgs.flatpak}/bin/flatpak build-finish $out
@@ -63,6 +58,7 @@
 
       packages.x86_64-linux.flatpak-runtime-base = drv2flatpak self.packages.x86_64-linux.runtime-base;
 
+      # TODO FIXME don't make this rebuild
       packages.x86_64-linux.sdk-base = buildRuntimeOrSdk "BaseSdk";
 
       packages.x86_64-linux.flatpak-sdk-base = drv2flatpak self.packages.x86_64-linux.sdk-base;
@@ -86,7 +82,7 @@
         cp ${pkgs.firefox}/lib/firefox/mozilla.cfg $out/files/etc/firefox/mozilla.cfg
         cp -r ${nixosCore.config.system.build.etc}/etc $out/files
         mkdir -p $out/files/run/current-system/sw/lib/locale/
-        cp ${pkgs.glibcLocales}/lib/locale/locale-archive $out/files/run/current-system/sw/lib/locale/locale-archive
+        cp -r ${nixosCore.config.system.path}/ $out/files/run/current-system/sw/
         ln -s ${package} $out/files/run/opengl-driver
         ln -s ${package32} $out/files/run/opengl-driver-32
         mkdir -p $out/files/bin
@@ -105,10 +101,11 @@
         ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber ${nixosCore.config.system.build.etc}/etc/* /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
-        ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
+        ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/current-system/sw
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
-        # ${pkgs.strace}/bin/strace -f 
-        ${gdb}/bin/gdb --eval-command="set debuginfod enabled on" --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
+        # ${pkgs.strace}/bin/strace -f
+        cat ${nixosCore.config.environment.variables}
+        ${pkgs.gdb}/bin/gdb --eval-command="set debuginfod enabled on" --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
         EOF
 
         ls -la $out/files/bin/
