@@ -3,25 +3,20 @@
   # :lf .#
   description = "A very basic flake";
 
-  outputs = { self, nixpkgs }:
+  inputs = {
+    nixseparatedebuginfod.url = "github:symphorien/nixseparatedebuginfod";
+  };
+
+  outputs = { self, nixpkgs, nixseparatedebuginfod }:
     let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       inner = pkgs.firefox;
       nixosLib = import (nixpkgs + "/nixos/lib") {
-        # Experimental features need testing too, but there's no point in warning
-        # about it, so we enable the feature flag.
-        featureFlags.minimalModules = { };
       };
-      # nixosLib.evalModules;
       nixosCore = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          #pkgs.pkgsModule
-          #(nixpkgs + "/nixos/modules/system/etc/etc.nix")
-          #(nixpkgs + "/nixos/modules/misc/assertions.nix")
-          #(nixpkgs + "/nixos/modules/config/system-path.nix")
-          #(nixpkgs + "/nixos/modules/config/fonts/fonts.nix")
-          #(nixpkgs + "/nixos/modules/config/fonts/fontconfig.nix")
+          nixseparatedebuginfod.nixosModules.default
           ({ ... }: {
             time.timeZone = "Europe/Berlin";
             # TODO FIXME more from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/i18n.nix
@@ -45,6 +40,7 @@
         ${pkgs.ostree}/bin/ostree init --mode bare-user-only --repo=$out
         ${pkgs.flatpak}/bin/flatpak build-export $out ${drv}
       '';
+      gdb = (pkgs.gdb.override { enableDebuginfod = true; });
       buildRuntimeOrSdk = name: (pkgs.runCommand "flatpak-${name}-base" { } ''
           mkdir -p $out
           cat > $out/metadata << EOF
@@ -55,7 +51,7 @@
           EOF
           mkdir -p $out/usr
           mkdir -p $out/files
-          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" ([ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ] ++ nixosCore.config.environment.systemPackages) )} $out/files/references
+          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" ([ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.strace gdb nixosCore.config.system.build.etc ] ++ nixosCore.config.environment.systemPackages) )} $out/files/references
           xargs tar c < $out/files/references | tar -xC $out/usr
           ls -la $out/usr
           ${pkgs.flatpak}/bin/flatpak build-finish $out
@@ -68,20 +64,7 @@
       packages.x86_64-linux.flatpak-runtime-base = drv2flatpak self.packages.x86_64-linux.runtime-base;
 
       packages.x86_64-linux.sdk-base = buildRuntimeOrSdk "BaseSdk";
-/*
-        (pkgs.runCommand "flatpak-sdk-base" { } ''
-          mkdir -p $out
-          cat > $out/metadata << EOF
-          [Runtime]
-          name=org.mydomain.BaseSdk
-          runtime=org.mydomain.BasePlatform/x86_64/master
-          sdk=org.mydomain.BaseSdk/x86_64/master
-          EOF
-          mkdir -p $out/usr
-          mkdir -p $out/files/x86_64-unknown-linux-gnu/
-          ${pkgs.flatpak}/bin/flatpak build-finish $out
-        '');
-*/
+
       packages.x86_64-linux.flatpak-sdk-base = drv2flatpak self.packages.x86_64-linux.sdk-base;
 
       packages.x86_64-linux.firefox = (pkgs.runCommand "firefox" { } ''
@@ -124,8 +107,8 @@
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
-        # ${pkgs.pkgsStatic.strace}/bin/strace -f 
-        ${pkgs.pkgsStatic.gdb}/bin/gdb --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
+        # ${pkgs.strace}/bin/strace -f 
+        ${gdb}/bin/gdb --eval-command="set debuginfod enabled on" --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
         EOF
 
         ls -la $out/files/bin/
@@ -137,13 +120,6 @@
       packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
     };
   /*
-warning: Unable to find libthread_db matching inferior's thread library, thread debugging will not be available.
-
-
-  lib/glibc-hwcaps/x86-64-v2/libpthread.so.0
-
-/nix/store/5fk74drrnrhgmcwxvsnmv2lx1srgdfkp-glib-2.74.5/lib/charset.alias
-
     nix build -L .#flatpak-firefox && flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run --devel org.mydomain.Firefox
 
     flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
@@ -153,38 +129,10 @@ warning: Unable to find libthread_db matching inferior's thread library, thread 
     flatpak install --or-update --assumeyes --user org.mydomain.BaseSdk
     nix build -L .#flatpak-firefox
     flatpak install --or-update --assumeyes --user --include-sdk nix org.mydomain.Firefox
-    flatpak run org.mydomain.Firefox
-c  */
+    flatpak run --devel org.mydomain.Firefox
+    fg # get process again
+  */
 
-  # https://github.com/search?q=repo%3Aflatpak%2Fflatpak+.ref&type=code
-  # nix run .#packages.x86_64-linux.firefox-flatpak
-  # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -f internal-run.sh
   # clear && /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/j44km7lwsc8s5dlvbm6d55v667k3a12d-strace-static-x86_64-unknown-linux-musl-6.2/bin/strace org.mydomain.Firefox -e 'trace=!futex,sched_yield,close,poll,munmap,gettid,mmap,fcntl,ftruncate,write,read,sendmsg,recvmsg,getrandom,sched_getaffinity,epoll_wait,mprotect,prctl,getpriority,sigaltstack,pread64,pwrite64,rt_sigaction,fallocate,getpid,madvise,rt_sigprocmask,set_robust_list,rseq,clone3,seccomp,dup,fsync,pipe2,eventfd2,getcwd,prlimit64,getuid,geteuid,getgid,getegid,epoll_ctl,setpriority,clone,exit,set_tid_address,brk,getppid,arch_prctl,writev,readv,lseek,socketpair,dup2,fstat,wait4,ioctl,getdents64,exit_group,socket,copy_file_range' -f internal-run.sh 2>&1 | grep -v /nix/store
-  # /nix/store/fann10rkra84rw3q3higd9wsxjn6pkij-bubblewrap-0.8.0/bin/bwrap --dev-bind / / --ro-bind ./result/flatpak $HOME/.local/share/flatpak -- /nix/store/p7g1m4d6vazqkarhlrrwakhbmpff0by8-flatpak-1.14.2/bin/flatpak --user run --devel --command=/app/nix/store/fj45303ravmhqnj4f1jlsxan8rb03qv9-gdb-static-x86_64-unknown-linux-musl-13.1/bin/gdb org.mydomain.Firefox /app/nix/store/6c1pxa6x6mb6z0g6ga1n00mjv43x9mf9-bash-5.2-p15-x86_64-unknown-linux-musl/bin/bash --args internal-run.sh
-  /*
-    flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak install org.freedesktop.Platform
-    flatpak install org.freedesktop.Sdk
-    flatpak build-init --type=runtime test a.b.c org.freedesktop.Sdk org.freedesktop.Platform
-
-    1.     org.mydomain.BasePlatform   master   i    nix     < 3.2?GB
-    firefox>  2.     org.mydomain.BaseSdk        master   i    nix     < 123 bytes
-    firefox>  3.     org.mydomain.Firefox        master   i    nix     < 1.3?GB
-  */
-
-  /*
-    what is really needed
-    ~/.local/share/flatpak/app
-
-
-
-    ~/.local/share/flatpak/runtime
-
-    error: Error opening file /home/moritz/.local/share/flatpak/app/org.mydomain.Firefox/x86_64/master/90c8457a04260968f1d439ba41cedfa71f3cb4ef9e0427df550a596db8234299/deploy: No such file or directory
-
-    cat /home/moritz/.local/share/flatpak/app/org.mydomain.Firefox/x86_64/master/90c8457a04260968f1d439ba41cedfa71f3cb4ef9e0427df550a596db8234299/deploy
-    file can also not simply be empty. 
-
-  */
 }
 

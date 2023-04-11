@@ -14,9 +14,25 @@
         "type": "indirect"
       }
     },
+    "nixseparatedebuginfod": {
+      "locked": {
+        "lastModified": 1681041600,
+        "narHash": "sha256-2lCSfSKkEcSxrHIAe+bBw94xYBrrMFk1Hy9PsRxw2yQ=",
+        "owner": "symphorien",
+        "repo": "nixseparatedebuginfod",
+        "rev": "ce88bc6e3c72700ce2d43a8f3a87e8d6c9ae8515",
+        "type": "github"
+      },
+      "original": {
+        "owner": "symphorien",
+        "repo": "nixseparatedebuginfod",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nixseparatedebuginfod": "nixseparatedebuginfod"
       }
     }
   },
