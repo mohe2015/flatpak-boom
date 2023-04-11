@@ -24,6 +24,7 @@
           #(nixpkgs + "/nixos/modules/config/fonts/fontconfig.nix")
           ({ ... }: {
             time.timeZone = "Europe/Berlin";
+            # TODO FIXME more from https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/i18n.nix
             system.stateVersion = "23.05";
           })
         ];
@@ -53,7 +54,7 @@
           EOF
           mkdir -p $out/usr
           mkdir -p $out/files
-          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ])} $out/files/references
+          cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" ([ package package32 pkgs.glibcLocales pkgs.pkgsStatic.bash pkgs.pkgsStatic.coreutils pkgs.pkgsStatic.strace pkgs.pkgsStatic.gdb nixosCore.config.system.build.etc ] ++ nixosCore.config.environment.systemPackages) )} $out/files/references
           xargs tar c < $out/files/references | tar -xC $out/usr
           ls -la $out/usr
           ${pkgs.flatpak}/bin/flatpak build-finish $out
