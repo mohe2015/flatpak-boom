@@ -93,7 +93,7 @@
       EOF
       mkdir -p $out/files
       # TODO FIXME autodetect dependencies
-      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner ])} references
+      cp ${pkgs.writeReferencesToFile (pkgs.linkFarmFromDrvs "myexample" [ inner pkgs.glibc.bin ])} references
       grep -v -x -F -f ${self.packages.x86_64-linux.runtime-base}/files/references references > $out/files/references
       xargs tar c < $out/files/references | tar -xC $out/files # TODO FIXME filter out dependencies already contained in base
       mkdir -p $out/
@@ -119,19 +119,20 @@
       ${pkgs.pkgsStatic.coreutils}/bin/cp -r --no-clobber /app/etc/firefox /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /etc/
       ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/
-      ${inner}/bin/firefox
+      #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
+      ${pkgs.pkgsStatic.strace}/bin/strace -f ${inner}/bin/firefox
       EOF
 
       ls -la $out/files/bin/
       chmod +x $out/files/bin/internal-run.sh
       # TODO FIXME wayland only doesn't work yet
-      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=x11 --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
+      ${pkgs.flatpak}/bin/flatpak build-finish --share=ipc --share=network --socket=cups --socket=pcsc --socket=pulseaudio --socket=wayland --device=all --filesystem=xdg-download --talk-name=org.a11y.Bus --talk-name=org.freedesktop.FileManager1 --talk-name=org.freedesktop.Notifications --talk-name=org.freedesktop.ScreenSaver --talk-name=org.gnome.SessionManager --talk-name=org.gtk.vfs.* --own-name=org.mozilla.firefox.* --own-name=org.mozilla.firefox_beta.* --own-name=org.mpris.MediaPlayer2.firefox.* --system-talk-name=org.freedesktop.NetworkManager $out
        '');
 
       packages.x86_64-linux.flatpak-firefox = drv2flatpak self.packages.x86_64-linux.firefox;
   };
 /*
-ix build -L .#flatpak-firefox && flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run org.mydomain.Firefox
+ix build -L .#flatpak-firefox && flatpak install --assumeyes --user --include-sdk nix org.mydomain.Firefox && flatpak run --devel org.mydomain.Firefox
 
 flatpak --no-gpg-verify --user remote-add nix file://$PWD/result
 nix build .#flatpak-runtime-base
