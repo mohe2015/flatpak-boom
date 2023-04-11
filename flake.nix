@@ -104,7 +104,7 @@
         ${pkgs.pkgsStatic.coreutils}/bin/ls -la /run/current-system/sw
         #${pkgs.glibc.bin}/bin/ldd ${inner}/bin/.firefox-wrapped
         # ${pkgs.strace}/bin/strace -f
-        cat ${nixosCore.config.environment.variables}
+        ${nixpkgs.lib.concatStringsSep "\n" (nixpkgs.lib.mapAttrsToList (key: value: "export " + key + "=\"" + value + "\"") nixosCore.config.environment.variables)}
         ${pkgs.gdb}/bin/gdb --eval-command="set debuginfod enabled on" --eval-command="set detach-on-fork off" --eval-command="set auto-load safe-path /" --eval-command=run -q --args ${pkgs.pkgsStatic.bash}/bin/bash ${inner}/bin/firefox --g-fatal-warnings
         EOF
 
